@@ -1,5 +1,4 @@
 #!/bin/bash
-#!/bin/bash
 
 ##################################
 # SysAudit version 0.1(BETA) #
