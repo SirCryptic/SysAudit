@@ -1,28 +1,28 @@
 #!/bin/bash
 
 ##################################
-# SysAudit version 0.1(BETA) #
+# SysAudit Version 0.1 (BETA)    #
 ##################################
-## Developed on GitHub With <3  ##
-##       By SirCryptic          ##
+# Developed with ❤️ on GitHub    #
+# By SirCryptic                   #
 ##################################
+# Special Thanks to:              #
+# NullSecurityTeam                #
+# M0bly {MIA}                     #
+# Double A {MIA}                  #
+# R1ff                            #
+# M0nde                           #
+# lucci                           #
+# Jack {R.I.P}                    #
+# Kiera                           #
 ##################################
-##        rjwdlu4eva            ##
+# Disclaimer:                     #
+# This script is in BETA. It has  #
+# been developed using basic      #
+# knowledge and may contain bugs. #
+# Use at your own risk.           #
 ##################################
-##         Greetz To:           ## 
-##################################
-##     NullSecurityTeam         ##
-##          M0bly {MIA}         ##
-##          Double A {MIA}      ##
-##################################
-##          R1ff                ##
-##          M0nde               ##
-##          lucci               ##
-##          Jack    {R.I.P}     ##
-##          Kiera               ##
-##################################
-## THIS WAS DEVELOPED USING GITHUB NO TESTING USING BASIC KNOWLEDGE ,I'M NOT RESPONSIBLE FOR BUGGED CODE JUST MERELY TESTING & EXPRESSING MYSELF ;) MWAH
-##################################
+
 # Function Definitions
 
 perform_network_scan() {
@@ -147,25 +147,6 @@ generate_audit_report() {
         cat system_info.txt
         cat password_policy.txt
         cat firewall_status.txt
-    } > $
-
-generate_audit_report() {
-    echo "Generating Report..."
-    
-    local report_file="audit_report.txt"
-    
-    if [[ -e $report_file ]]; then
-        echo "Warning: $report_file already exists. Overwriting..."
-    fi
-
-    {
-        cat network_scan.txt
-        cat vuln_assessment.txt
-        cat ssh_compliance.txt
-        cat weak_passwords.txt
-        cat system_info.txt
-        cat password_policy.txt
-        cat firewall_status.txt
     } > $report_file
 
     echo "Report Generated: $report_file"
@@ -187,22 +168,22 @@ while true; do
 
     case $choice in
         1)
-            network_scan
+            perform_network_scan
             ;;
         2)
-            vulnerability_assessment
+            perform_vulnerability_assessment
             ;;
         3)
-            compliance_check
+            run_compliance_check
             ;;
         4)
-            system_info
+            collect_system_info
             ;;
         5)
-            password_policy_check
+            check_password_policy
             ;;
         6)
-            firewall_status
+            check_firewall_status
             ;;
         7)
             generate_audit_report
